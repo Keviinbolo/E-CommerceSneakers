@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   limitedOverlayText: {
     ...theme.typography.body,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: theme.colors.secondary
   },
   content: {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   brand: {
     ...theme.typography.caption,
     color: theme.colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textTransform: 'uppercase'
   },
   name: {
