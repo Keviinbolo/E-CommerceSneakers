@@ -1,11 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'https://fakestoreapi.com';
+const API_BASE_URL = 'http://localhost:3000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000
 });
 
 api.interceptors.request.use(
@@ -16,16 +15,13 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado
       AsyncStorage.removeItem('@auth_token');
     }
     return Promise.reject(error);

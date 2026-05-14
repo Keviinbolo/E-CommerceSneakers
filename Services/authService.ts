@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { api } from './api';
 
 export interface User {
   id: string;
@@ -12,36 +13,28 @@ class AuthService {
   private readonly USER_KEY = '@user_data';
 
   async login(email: string, password: string): Promise<boolean> {
-    // Simulación de login
-    if (email === 'user@example.com' && password === 'password') {
-      const token = 'fake_jwt_token_' + Date.now();
-      const user: User = {
-        id: '1',
-        email: email,
-        name: 'Sneaker Enthusiast'
-      };
-      
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      const { token, user } = response.data;
+
       await AsyncStorage.setItem(this.TOKEN_KEY, token);
       await AsyncStorage.setItem(this.USER_KEY, JSON.stringify(user));
       return true;
+    } catch (error) {
+      console.error('Login error:', error);
     }
-    return false;
+
   }
 
   async register(name: string, email: string, password: string): Promise<boolean> {
-    // Simulación de registro
-    const token = 'fake_jwt_token_' + Date.now();
-    const user: User = {
-      id: Date.now().toString(),
-      email: email,
-      name: name
-    };
-    
-    await AsyncStorage.setItem(this.TOKEN_KEY, token);
-    await AsyncStorage.setItem(this.USER_KEY, JSON.stringify(user));
-    return true;
+    try {
+      await api.post('/auth/register', { name, email, password });
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      return false;
+    }
   }
-
   async logout(): Promise<void> {
     await AsyncStorage.removeItem(this.TOKEN_KEY);
     await AsyncStorage.removeItem(this.USER_KEY);
@@ -63,10 +56,10 @@ class AuthService {
   async setupBiometric(): Promise<boolean> {
     const compatible = await LocalAuthentication.hasHardwareAsync();
     if (!compatible) return false;
-    
+
     const enrolled = await LocalAuthentication.isEnrolledAsync();
     if (!enrolled) return false;
-    
+
     return true;
   }
 
