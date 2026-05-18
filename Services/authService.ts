@@ -22,8 +22,8 @@ class AuthService {
       return true;
     } catch (error) {
       console.error('Login error:', error);
+      return false;
     }
-
   }
 
   async register(name: string, email: string, password: string): Promise<boolean> {
