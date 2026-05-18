@@ -36,7 +36,7 @@ export const ProductScreen = ({ route, navigation }: ProductScreenProps) => {
     setProduct(data);
   };
 
-  const addToCart = () => {
+  const addToCart = async () => {
     if (!product) {
       return;
     }
@@ -46,12 +46,12 @@ export const ProductScreen = ({ route, navigation }: ProductScreenProps) => {
       return;
     }
 
-    addItem(product, selectedSize, quantity);
+    await addItem(product, selectedSize, quantity);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert('Éxito', `${product.name} añadido al carrito`);
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!product) {
       return;
     }
@@ -61,7 +61,7 @@ export const ProductScreen = ({ route, navigation }: ProductScreenProps) => {
       return;
     }
 
-    addItem(product, selectedSize, quantity);
+    await addItem(product, selectedSize, quantity);
     navigation.navigate('Checkout');
   };
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -27,7 +27,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   icon
 }) => {
-  const scaleAnim = new Animated.Value(1);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -41,7 +41,6 @@ export const Button: React.FC<ButtonProps> = ({
       toValue: 1,
       useNativeDriver: true
     }).start();
-    onPress();
   };
 
   const getButtonStyle = () => {
@@ -70,6 +69,7 @@ export const Button: React.FC<ButtonProps> = ({
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
         onPressIn={handlePressIn}
+        onPress={onPress}
         onPressOut={handlePressOut}
         style={getButtonStyle()}
         disabled={disabled || loading}

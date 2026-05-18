@@ -67,17 +67,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items, loading]);
 
   const addItem = async (product: Product, size: string, quantity: number) => {
-    try {
-      // fetch latest stock from API
-      const resp = await api.get(`/products/${product.id}`);
-      const remote = resp.data;
-      const remoteStock = Number(remote?.stock ?? remote?.quantity ?? product.stock ?? 0);
-
-      if (remoteStock <= 0) {
-        Alert.alert('Sin stock', 'Este producto está agotado');
-        return;
-      }
-
+    const syncCartWithStock = (stock: number) => {
       setItems((previousItems) => {
         const existingIndex = previousItems.findIndex(
           (item) => item.productId === product.id && item.size === size
@@ -86,10 +76,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (existingIndex >= 0) {
           const next = [...previousItems];
           const current = next[existingIndex];
-          const nextQuantity = Math.min(current.quantity + quantity, remoteStock);
+          const nextQuantity = Math.min(current.quantity + quantity, stock);
 
           if (nextQuantity === current.quantity) {
-            // already at max available
             Alert.alert('Límite alcanzado', 'No puedes añadir más de este producto');
             return previousItems;
           }
@@ -97,12 +86,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           next[existingIndex] = {
             ...current,
             quantity: nextQuantity,
-            stock: remoteStock
+            stock
           };
           return next;
         }
 
-        const initialQuantity = Math.min(quantity, remoteStock);
+        const initialQuantity = Math.min(quantity, stock);
 
         return [
           ...previousItems,
@@ -114,13 +103,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             price: product.price,
             size,
             quantity: initialQuantity,
-            stock: remoteStock
+            stock
           }
         ];
       });
+    };
+
+    try {
+      // fetch latest stock from API
+      const resp = await api.get(`/products/${product.id}`);
+      const remote = resp.data;
+      const remoteStock = Number(remote?.stock ?? remote?.quantity ?? product.stock ?? 0);
+
+      if (remoteStock <= 0) {
+        Alert.alert('Sin stock', 'Este producto está agotado');
+        return;
+      }
+      syncCartWithStock(remoteStock);
     } catch (error) {
       console.warn('Error comprobando stock:', error);
-      Alert.alert('Error', 'No se pudo verificar el stock. Intenta de nuevo.');
+      const fallbackStock = Number(product.stock ?? product.quantity ?? 0);
+
+      if (fallbackStock <= 0) {
+        Alert.alert('Error', 'No se pudo verificar el stock. Intenta de nuevo.');
+        return;
+      }
+
+      syncCartWithStock(fallbackStock);
     }
   };
 

@@ -47,9 +47,7 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
 
     if (success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Exito', 'Registro completado', [
-        { text: 'OK', onPress: () => navigation.replace('Home') }
-      ]);
+      navigation.replace('Home');
     } else {
       Alert.alert('Error', 'No se pudo completar el registro');
     }

@@ -28,7 +28,18 @@ class AuthService {
 
   async register(name: string, email: string, password: string): Promise<boolean> {
     try {
-      await api.post('/auth/register', { name, email, password });
+      const response = await api.post('/auth/register', { name, email, password });
+      const { token, user } = response.data ?? {};
+
+      if (token) {
+        await AsyncStorage.setItem(this.TOKEN_KEY, token);
+        if (user) {
+          await AsyncStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        }
+      } else {
+        await this.login(email, password);
+      }
+
       return true;
     } catch (error) {
       console.error('Registration error:', error);
