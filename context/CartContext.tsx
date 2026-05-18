@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Product } from '../Services/productService';
+import { api } from '../Services/api';
 
 const CART_STORAGE_KEY = '@sneakers_cart_v1';
 
@@ -20,9 +22,9 @@ interface CartContextValue {
   loading: boolean;
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, size: string, quantity: number) => void;
+  addItem: (product: Product, size: string, quantity: number) => Promise<void>;
   removeItem: (productId: string, size: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number) => void;
+  updateQuantity: (productId: string, size: string, quantity: number) => Promise<void>;
   clearCart: () => void;
 }
 
@@ -64,37 +66,62 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [items, loading]);
 
-  const addItem = (product: Product, size: string, quantity: number) => {
-    setItems((previousItems) => {
-      const existingIndex = previousItems.findIndex(
-        (item) => item.productId === product.id && item.size === size
-      );
+  const addItem = async (product: Product, size: string, quantity: number) => {
+    try {
+      // fetch latest stock from API
+      const resp = await api.get(`/products/${product.id}`);
+      const remote = resp.data;
+      const remoteStock = Number(remote?.stock ?? remote?.quantity ?? product.stock ?? 0);
 
-      if (existingIndex >= 0) {
-        const next = [...previousItems];
-        const current = next[existingIndex];
-        const nextQuantity = Math.min(current.quantity + quantity, current.stock);
-        next[existingIndex] = {
-          ...current,
-          quantity: nextQuantity
-        };
-        return next;
+      if (remoteStock <= 0) {
+        Alert.alert('Sin stock', 'Este producto está agotado');
+        return;
       }
 
-      return [
-        ...previousItems,
-        {
-          productId: product.id,
-          name: product.name,
-          brand: product.brand,
-          image: product.image,
-          price: product.price,
-          size,
-          quantity,
-          stock: product.stock
+      setItems((previousItems) => {
+        const existingIndex = previousItems.findIndex(
+          (item) => item.productId === product.id && item.size === size
+        );
+
+        if (existingIndex >= 0) {
+          const next = [...previousItems];
+          const current = next[existingIndex];
+          const nextQuantity = Math.min(current.quantity + quantity, remoteStock);
+
+          if (nextQuantity === current.quantity) {
+            // already at max available
+            Alert.alert('Límite alcanzado', 'No puedes añadir más de este producto');
+            return previousItems;
+          }
+
+          next[existingIndex] = {
+            ...current,
+            quantity: nextQuantity,
+            stock: remoteStock
+          };
+          return next;
         }
-      ];
-    });
+
+        const initialQuantity = Math.min(quantity, remoteStock);
+
+        return [
+          ...previousItems,
+          {
+            productId: product.id,
+            name: product.name,
+            brand: product.brand,
+            image: product.image,
+            price: product.price,
+            size,
+            quantity: initialQuantity,
+            stock: remoteStock
+          }
+        ];
+      });
+    } catch (error) {
+      console.warn('Error comprobando stock:', error);
+      Alert.alert('Error', 'No se pudo verificar el stock. Intenta de nuevo.');
+    }
   };
 
   const removeItem = (productId: string, size: string) => {
@@ -103,24 +130,45 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  const updateQuantity = (productId: string, size: string, quantity: number) => {
+  const updateQuantity = async (productId: string, size: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(productId, size);
       return;
     }
 
-    setItems((previousItems) =>
-      previousItems.map((item) => {
-        if (item.productId !== productId || item.size !== size) {
-          return item;
-        }
+    try {
+      const resp = await api.get(`/products/${productId}`);
+      const remote = resp.data;
+      const remoteStock = Number(remote?.stock ?? remote?.quantity ?? 0);
 
-        return {
-          ...item,
-          quantity: Math.min(quantity, item.stock)
-        };
-      })
-    );
+      if (remoteStock <= 0) {
+        removeItem(productId, size);
+        Alert.alert('Sin stock', 'Este producto está agotado');
+        return;
+      }
+
+      setItems((previousItems) =>
+        previousItems.map((item) => {
+          if (item.productId !== productId || item.size !== size) {
+            return item;
+          }
+
+          const nextQuantity = Math.min(quantity, remoteStock);
+          if (nextQuantity !== quantity) {
+            Alert.alert('Cantidad ajustada', `La cantidad se ajustó al stock disponible (${remoteStock})`);
+          }
+
+          return {
+            ...item,
+            quantity: nextQuantity,
+            stock: remoteStock
+          };
+        })
+      );
+    } catch (error) {
+      console.warn('Error comprobando stock:', error);
+      Alert.alert('Error', 'No se pudo verificar el stock. Intenta de nuevo.');
+    }
   };
 
   const clearCart = () => {
